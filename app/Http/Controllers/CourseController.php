@@ -17,9 +17,30 @@ class CourseController extends Controller
     public function index()
     {
         Log::info('Tentative de récupération des cours');
-        $courses = Course::all();
-        Log::info('Cours trouvés:', ['courses' => $courses->toArray()]);
-        return response()->json($courses);
+        try {
+            $courses = Course::with(['attendances' => function($query) {
+                $query->where('user_id', auth()->id());
+            }])->get();
+
+            $courses = $courses->map(function($course) {
+                $attendance = $course->attendances->first();
+                return [
+                    'id' => $course->id,
+                    'title' => $course->title,
+                    'description' => $course->description,
+                    'start_time' => $course->start_time,
+                    'end_time' => $course->end_time,
+                    'qr_code' => $course->qr_code,
+                    'signed' => $attendance ? $attendance->signed : false
+                ];
+            });
+
+            Log::info('Cours trouvés:', ['count' => $courses->count(), 'courses' => $courses->toArray()]);
+            return response()->json($courses);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération des cours:', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Erreur lors de la récupération des cours'], 500);
+        }
     }
 
     /**
@@ -66,11 +87,15 @@ class CourseController extends Controller
      */
     public function show(Course $course)
     {
-        $students = $course->users()->get()->map(function($user) {
+        $students = $course->users()->get()->map(function($user) use ($course) {
+            $attendance = $user->attendances()
+                ->where('course_id', $course->id)
+                ->first();
+            
             return [
                 'id' => $user->id,
                 'name' => $user->firstname . ' ' . $user->lastname,
-                'signed' => $user->pivot->signed ?? false
+                'signed' => $attendance ? $attendance->signed : false
             ];
         });
 

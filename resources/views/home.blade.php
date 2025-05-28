@@ -18,19 +18,23 @@ use Illuminate\Support\Facades\Auth;
 
         <!-- Liste des cours -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            @foreach($courses as $course)
+            @forelse($courses as $course)
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h2 class="text-xl font-semibold mb-2">{{ $course->title }}</h2>
                 <p class="text-gray-600 mb-4">{{ $course->description }}</p>
                 <div class="text-sm text-gray-500 mb-4">
-                    <p>Début: {{ \Carbon\Carbon::parse($course->start_time)->format('d/m/Y H:i') }}</p>
-                    <p>Fin: {{ \Carbon\Carbon::parse($course->end_time)->format('d/m/Y H:i') }}</p>
+                    <p>Début: {{ $course->start_time->format('d/m/Y H:i') }}</p>
+                    <p>Fin: {{ $course->end_time->format('d/m/Y H:i') }}</p>
                 </div>
                 <a href="{{ route('courses.show', $course) }}" class="inline-block bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
                     Voir les détails
                 </a>
             </div>
-            @endforeach
+            @empty
+            <div class="col-span-full text-center py-8">
+                <p class="text-gray-500">Aucun cours n'a été créé pour le moment.</p>
+            </div>
+            @endforelse
         </div>
 
         <!-- Modal de création de cours -->
@@ -55,7 +59,7 @@ use Illuminate\Support\Facades\Auth;
                             <input type="datetime-local" name="start_time" id="start_time" required
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         </div>
-                        <div class="mb-6">
+                        <div class="mb-4">
                             <label for="end_time" class="block text-sm font-medium text-gray-700">Date de fin</label>
                             <input type="datetime-local" name="end_time" id="end_time" required
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
@@ -97,49 +101,5 @@ use Illuminate\Support\Facades\Auth;
     function hideCreateForm() {
         document.getElementById('createCourseModal').classList.add('hidden');
     }
-
-    // Gestion de la soumission du formulaire
-    document.querySelector('form[action="{{ route('courses.store') }}"]').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const data = {};
-        
-        // Convertir FormData en objet
-        for (let [key, value] of formData.entries()) {
-            if (key === 'students[]') {
-                if (!data.students) {
-                    data.students = [];
-                }
-                data.students.push(value);
-            } else {
-                data[key] = value;
-            }
-        }
-        
-        fetch(this.action, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.errors) {
-                // Afficher les erreurs
-                alert('Erreur: ' + Object.values(data.errors).flat().join('\n'));
-            } else {
-                // Rediriger vers la page d'accueil
-                window.location.reload();
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Une erreur est survenue lors de la création du cours');
-        });
-    });
 </script>
 @endpush 

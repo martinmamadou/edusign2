@@ -79,7 +79,6 @@ class AttendanceController extends Controller
     public function signAttendance(Request $request, Course $course): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'user_id' => 'required|exists:users,id',
             'qr_code' => 'required|string',
         ]);
 
@@ -91,7 +90,7 @@ class AttendanceController extends Controller
             return response()->json(['error' => 'QR code invalide'], 422);
         }
 
-        $attendance = Attendance::where('user_id', $request->user_id)
+        $attendance = Attendance::where('user_id', auth()->id())
             ->where('course_id', $course->id)
             ->first();
 
@@ -99,15 +98,15 @@ class AttendanceController extends Controller
             return response()->json(['error' => 'Présence non trouvée'], 404);
         }
 
-        if ($attendance->signed) {
-            return response()->json(['error' => 'Présence déjà signée'], 422);
-        }
-
+        // Mettre à jour uniquement le champ signed
         $attendance->update([
             'signed' => true,
             'signed_at' => now()
         ]);
 
-        return response()->json(['attendance' => $attendance]);
+        return response()->json([
+            'message' => 'Présence mise à jour',
+            'attendance' => $attendance
+        ]);
     }
 }

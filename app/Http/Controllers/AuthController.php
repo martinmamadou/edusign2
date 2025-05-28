@@ -23,10 +23,23 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         Log::info('Tentative de connexion avec email: ' . $request->email);
+        Log::info('Données reçues:', $request->all());
 
-        $request->validate([
-            'email' => 'required|email',
-        ]);
+        try {
+            $validated = $request->validate([
+                'email' => 'required|email',
+            ]);
+            Log::info('Données validées:', $validated);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Erreur de validation:', [
+                'errors' => $e->errors(),
+                'request' => $request->all()
+            ]);
+            return response()->json([
+                'message' => 'Erreur de validation',
+                'errors' => $e->errors()
+            ], 422);
+        }
 
         $user = User::where('email', $request->email)->first();
         
@@ -39,12 +52,16 @@ class AuthController extends Controller
             ], 404);
         }
 
-        Auth::login($user);
+        $token = $user->createToken('auth-token')->plainTextToken;
+        Log::info('Token généré avec succès');
 
+        Auth::login($user);
+        
         return response()->json([
             'user' => $user,
+            'token' => $token,
             'message' => 'Connexion réussie',
-            'redirect' => route('home')
+            'redirect' => '/'
         ]);
     }
 
@@ -76,8 +93,9 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        return response()->json([
-            'message' => 'Déconnexion réussie'
-        ]);
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect()->route('login');
     }
 } 
